@@ -3,8 +3,6 @@ import re
 import time
 import logging
 
-logging.basicConfig(level=logging.INFO)
-
 class ADBDevice:
     def __init__(self):
         self._logger = logging.getLogger("ADBDevice")
@@ -12,6 +10,7 @@ class ADBDevice:
         self.d_screen_size = [int(size) for size in re.findall(
             "(?<=Physical size: )(\d*)x(\d*)", self.do_adb_command("wm size"))[0]]
         self.d_screen_density = float(re.findall("(?<=Physical density: )\d*", self.do_adb_command("wm density"))[0])
+        self.r_screen_size = self.d_screen_size
 
         self._screen_size = (self.d_screen_size[0] / self.d_screen_density,
                              self.d_screen_size[1] / self.d_screen_density)
@@ -37,14 +36,19 @@ class ADBDevice:
     def set_size(self, resolution=None):
         if resolution is None:
             resolution = self.d_screen_size
+        
+        dpi = self._get_density(resolution)
 
         self.do_adb_command("wm size {}x{}".format(resolution[0], resolution[1]))
-        dpi = self._get_density(resolution)
         self._set_density(dpi[0])
+        self.r_screen_size = (resolution[0], resolution[1])
 
         if dpi[0] != dpi[1]:
             self._logger.warning("Bad resolution {}x{} (xDPI: {}, yDPI: {})".format(
                 resolution[0], resolution[1], dpi[0], dpi[1]))
+
+        # Let resolution change :)
+        time.sleep(2)
 
     def _set_density(self, density):
         self.do_adb_command("wm density {}".format(density))
@@ -53,9 +57,13 @@ class ADBDevice:
         self.do_adb_command("settings put global policy_control immersive.full={}".format(package))
 
     def do_tap(self, coordinates):
+        coordinates = self._point_from_percent(coordinates)
         self.do_adb_command("input tap {} {}".format(coordinates[0], coordinates[1]))
 
     def do_swipe(self, start_coordinates, end_coordinates, tween_time=200):
+        start_coordinates = self._point_from_percent(start_coordinates)
+        end_coordinates = self._point_from_percent(end_coordinates)
+
         self.do_adb_command("input swipe {} {} {} {} {}".format(
             start_coordinates[0], start_coordinates[1], end_coordinates[0],
             end_coordinates[1], tween_time))
@@ -65,3 +73,7 @@ class ADBDevice:
         dpi_1 = (resolution[1] / self._screen_size[1]).__round__()
 
         return (dpi_0, dpi_1)
+
+    def _point_from_percent(self, point):
+        return (int(self.r_screen_size[0] / 100 * point[0]),
+                int(self.r_screen_size[1] / 100 * point[1]))
