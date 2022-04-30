@@ -33,21 +33,17 @@ class Imager:
         return False
 
     def _apply_pokestop_mask(self, pixel):
-        if pixel > [200, 200, 200, 255]:
+        if pixel[2] < 230:
             return False
-        elif pixel > [0, 0, 200, 255] and pixel[2] < 210:
-            return False
-        elif pixel[0] > 100 and pixel[1] > 80 and pixel[2] > 80:
+        elif abs(pixel[0] - pixel[1]) < 50 and abs(pixel[0] - pixel[2]) < 50:
             return False
 
         return True
     
     def _apply_pokestop_mask_visualise(self, pixel):
-        if pixel > [200, 200, 200, 255]:
+        if pixel[2] < 230:
             return [0, 0, 0, 0]
-        elif pixel > [0, 0, 200, 255] and pixel[2] < 210:
-            return [0, 0, 0, 0]
-        elif pixel[0] > 100 and pixel[1] > 70 and pixel[2] > 70:
+        elif abs(pixel[0] - pixel[1]) < 50 and abs(pixel[0] - pixel[2]) < 50:
             return [0, 0, 0, 0]
 
         return [0, 0, pixel[2], 255]
@@ -74,9 +70,9 @@ class Imager:
                     close = False
                     for coords in range(0, len(self.pokestops)):
                         if self._coords_are_close([pixel_i, pixel_row], self.pokestops[coords][0]):
-                            self.pokestops[close][1] += 1
-                            self.pokestops[close][2].append(pixel_i)
-                            self.pokestops[close][3].append(pixel_row)
+                            self.pokestops[coords][1] += 1
+                            self.pokestops[coords][2].append(pixel_i)
+                            self.pokestops[coords][3].append(pixel_row)
 
                             close = True
                             break
@@ -90,12 +86,27 @@ class Imager:
         if visualise:
             Image.fromarray(img_array).save("visualise_pokestop_mask.png")
 
+        toremove = []
         for pokestop in range(0, len(self.pokestops)):
             ps = self.pokestops[pokestop]
-            x = ps[2][round(len(ps[2])/2)]/self.device.r_screen_size[0]*100
-            y = (ps[3][round(len(ps[3])/2)]+(self.device.r_screen_size[1]/2))/self.device.r_screen_size[1]*100
+            if ps[1] < 500:
+                toremove.insert(0, pokestop)
+            else:
+                x = ps[2][round(len(ps[2])/2)]/self.device.r_screen_size[0]*100
+                y = (ps[3][round(len(ps[3])/2)]+(self.device.r_screen_size[1]/2))/self.device.r_screen_size[1]*100
 
-            self.pokestops[pokestop] = [(x, y), ps[1]]
+                self.pokestops[pokestop] = [(x, y), ps[1]]
+
+        for ps in toremove:
+            ''' Doesn't work for now :')
+            if visualise:
+                for pos in range(0, len(self.pokestops[ps][2])):
+                    img_array[self.pokestops[ps][3][pos]][self.pokestops[ps][2][pos]] = np.array([0, 0, 0, 0], dtype=int)
+            '''
+                    
+            self._logger.debug("Removed pokestop at x{} y{}, density too low".format(
+                self.pokestops[ps][0][0], self.pokestops[ps][0][1]))
+            del self.pokestops[ps]
 
         self.pokestops.sort(reverse=True, key=lambda stop: stop[1])
         self._logger.debug("Took {}s applying pokestop mask".format(time.time() - t))
