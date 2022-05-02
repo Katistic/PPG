@@ -53,26 +53,8 @@ class Imager:
             return False
 
         return True
-    
-    def _apply_pokestop_mask_visualise(self, pixel):
-
-    @staticmethod
-    def _apply_pokestop_mask_visualise(pixel):
-        # Mask out anything will lower blue levels
-        if pixel[2] < 230:
-            return [0, 0, 0, 0]
-        # Mask out white/grays
-        elif abs(pixel[0] - pixel[1]) < 50 and abs(pixel[0] - pixel[2]) < 50:
-            return [0, 0, 0, 0]
-        # Mask out purple (collected pokestops)
-        elif pixel[0] > 150:
-            return [0, 0, 0, 0]
-
-        return [0, 0, pixel[2], 255]
 
     def pokestop_mask(self, visualise=False):
-        # Having visualise=False can save > 1second
-
         t = time.time()
         img_array = self.interactable_crop
 
@@ -81,15 +63,8 @@ class Imager:
 
         for pixel_row in range(0, len(img_array)):
             for pixel_i in range(0, len(img_array[pixel_row])):
-                if visualise:
-                    pixel = img_array[pixel_row][pixel_i]
-                    img_array[pixel_row][pixel_i] = np.array(
-                        self._apply_pokestop_mask_visualise(pixel.tolist()), dtype=int)
+                filtered = self._apply_pokestop_mask(img_array[pixel_row][pixel_i].tolist())
 
-                    filtered = pixel[3] == 255
-                else:
-                    filtered = self._apply_pokestop_mask(img_array[pixel_row][pixel_i].tolist())
-                
                 if filtered:
                     close = False
                     for coordinates in range(0, len(self.pokestops)):
@@ -106,6 +81,8 @@ class Imager:
                         self._logger.debug(
                             "Found potential pokestop at [{}, {}]".format(
                                 pixel_i, pixel_row))
+                elif visualise:
+                    img_array[pixel_row][pixel_i][3] = 0
 
         to_remove = []
         for pokestop in range(0, len(self.pokestops)):
@@ -126,7 +103,7 @@ class Imager:
             if visualise:
                 for pos in range(0, len(self.pokestops[ps][2])):
                     img_array[self.pokestops[ps][3][pos]][
-                        self.pokestops[ps][2][pos]] = np.array([0, 0, 0, 0], dtype=int)
+                        self.pokestops[ps][2][pos]][3] = 0
 
             self._logger.debug("Removed pokestop at x{} y{}, density too low".format(
                 self.pokestops[ps][0][0], self.pokestops[ps][0][1]))
@@ -138,3 +115,4 @@ class Imager:
         self.pokestops.sort(reverse=True, key=lambda stop: stop[1])
         self._logger.debug("Took {}s applying pokestop mask".format(time.time() - t))
 
+# player is ~ 550 1510c / 50% 63%
