@@ -7,6 +7,8 @@ Of course there will be more to come, it's still early days
 
 ```diff
 + Auto-tap on Pokestops
++ Auto-tap on TeamRocket GO battles
+- Doesn't start TeamRocket GO battles
 ```
 
 ### Inspiration:
