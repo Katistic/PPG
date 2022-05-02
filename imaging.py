@@ -63,7 +63,10 @@ class Imager:
         # Having visualise=False can save > 1second
 
         t = time.time()
-        img_array = np.array(self._crop([0, 50], [100, 86]))
+        img_array = np.array(self._crop([16, 50], [84, 86]))
+
+        if visualise:
+            Image.fromarray(img_array).save("temp.png")
 
         for pixel_row in range(0, len(img_array)):
             for pixel_i in range(0, len(img_array[pixel_row])):
@@ -92,9 +95,6 @@ class Imager:
                         self._logger.debug(
                             "Found potential pokestop at [{}, {}]".format(
                                 pixel_i, pixel_row))
-                    
-        if visualise:
-            Image.fromarray(img_array).save("visualise_pokestop_mask.png")
 
         toremove = []
         for pokestop in range(0, len(self.pokestops)):
@@ -102,21 +102,24 @@ class Imager:
             if ps[1] < 500:
                 toremove.insert(0, pokestop)
             else:
-                x = ps[2][round(len(ps[2])/2)]/self.device.r_screen_size[0]*100
+                # Add 16% resolution back to x coord from crop
+                x = (ps[2][round(len(ps[2])/2)]+(self.device.r_screen_size[0]/6.25))/self.device.r_screen_size[0]*100
+                # Add 50% resolution back to y coord from crop
                 y = (ps[3][round(len(ps[3])/2)]+(self.device.r_screen_size[1]/2))/self.device.r_screen_size[1]*100
 
                 self.pokestops[pokestop] = [(x, y), ps[1]]
 
         for ps in toremove:
-            ''' Doesn't work for now :')
             if visualise:
                 for pos in range(0, len(self.pokestops[ps][2])):
                     img_array[self.pokestops[ps][3][pos]][self.pokestops[ps][2][pos]] = np.array([0, 0, 0, 0], dtype=int)
-            '''
                     
             self._logger.debug("Removed pokestop at x{} y{}, density too low".format(
                 self.pokestops[ps][0][0], self.pokestops[ps][0][1]))
             del self.pokestops[ps]
+
+        if visualise:
+            Image.fromarray(img_array).save("visualise_pokestop_mask.png")
 
         self.pokestops.sort(reverse=True, key=lambda stop: stop[1])
         self._logger.debug("Took {}s applying pokestop mask".format(time.time() - t))
