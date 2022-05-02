@@ -8,6 +8,8 @@ from PIL import Image
 class Imager:
     def __init__(self, device):
         self.im = None
+        self.cropped_im = None
+
         self.device = device
         self._logger = logging.getLogger("Imager")
 
@@ -20,14 +22,17 @@ class Imager:
             self.im.close()
 
         self.im = Image.open(image)
+        self.cropped_im = None
 
-    def _crop(self, point1, point2):
-        point1 = self.device._point_from_percent(point1)
-        point2 = self.device._point_from_percent(point2)
+    @property
+    def interactable_crop(self):
+        if self.cropped_im is None:
+            point1 = self.device._point_from_percent([16, 50])
+            point2 = self.device._point_from_percent([84, 86])
+            self.cropped_im = np.array(self.im.crop([point1[0], point1[1], point2[0], point2[1]]))
 
-        return self.im.crop([point1[0], point1[1], point2[0], point2[1]])
+        return self.cropped_im
 
-    def _coords_are_close(self, coord1, coord2):
     @staticmethod
     def _coordinates_are_close(coord1, coord2):
         if abs(coord1[0] - coord2[0]) < 80 and abs(coord1[1] - coord2[1]) < 80:
@@ -35,7 +40,6 @@ class Imager:
 
         return False
 
-    def _apply_pokestop_mask(self, pixel):
     @staticmethod
     def _apply_pokestop_mask(pixel):
         # Mask out anything will lower blue levels
@@ -65,13 +69,12 @@ class Imager:
             return [0, 0, 0, 0]
 
         return [0, 0, pixel[2], 255]
-    
 
     def pokestop_mask(self, visualise=False):
         # Having visualise=False can save > 1second
 
         t = time.time()
-        img_array = np.array(self._crop([16, 50], [84, 86]))
+        img_array = self.interactable_crop
 
         if visualise:
             Image.fromarray(img_array).save("temp.png")
@@ -89,11 +92,6 @@ class Imager:
                 
                 if filtered:
                     close = False
-                    for coords in range(0, len(self.pokestops)):
-                        if self._coords_are_close([pixel_i, pixel_row], self.pokestops[coords][0]):
-                            self.pokestops[coords][1] += 1
-                            self.pokestops[coords][2].append(pixel_i)
-                            self.pokestops[coords][3].append(pixel_row)
                     for coordinates in range(0, len(self.pokestops)):
                         if self._coordinates_are_close([pixel_i, pixel_row], self.pokestops[coordinates][0]):
                             self.pokestops[coordinates][1] += 1
@@ -109,31 +107,24 @@ class Imager:
                             "Found potential pokestop at [{}, {}]".format(
                                 pixel_i, pixel_row))
 
-        toremove = []
         to_remove = []
         for pokestop in range(0, len(self.pokestops)):
             ps = self.pokestops[pokestop]
             if ps[1] < 500:
-                toremove.insert(0, pokestop)
                 to_remove.insert(0, pokestop)
             else:
                 # Add 16% resolution back to x coord from crop
-                x = (ps[2][round(len(ps[2])/2)]+(self.device.r_screen_size[0]/6.25))/self.device.r_screen_size[0]*100
                 x = (ps[2][round(len(ps[2]) / 2)] + (self.device.r_screen_size[0] / 6.25)
                      ) / self.device.r_screen_size[0] * 100
                 # Add 50% resolution back to y coord from crop
-                y = (ps[3][round(len(ps[3])/2)]+(self.device.r_screen_size[1]/2))/self.device.r_screen_size[1]*100
                 y = (ps[3][round(len(ps[3]) / 2)] + (self.device.r_screen_size[1] / 2)
                      ) / self.device.r_screen_size[1] * 100
 
                 self.pokestops[pokestop] = [(x, y), ps[1]]
 
-        for ps in toremove:
         for ps in to_remove:
             if visualise:
                 for pos in range(0, len(self.pokestops[ps][2])):
-                    img_array[self.pokestops[ps][3][pos]][self.pokestops[ps][2][pos]] = np.array([0, 0, 0, 0], dtype=int)
-                    
                     img_array[self.pokestops[ps][3][pos]][
                         self.pokestops[ps][2][pos]] = np.array([0, 0, 0, 0], dtype=int)
 
@@ -147,5 +138,3 @@ class Imager:
         self.pokestops.sort(reverse=True, key=lambda stop: stop[1])
         self._logger.debug("Took {}s applying pokestop mask".format(time.time() - t))
 
-
-# player is ~ 550 1510c / 50% 63%
