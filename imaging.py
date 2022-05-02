@@ -33,17 +33,27 @@ class Imager:
         return False
 
     def _apply_pokestop_mask(self, pixel):
+        # Mask out anything will lower blue levels
         if pixel[2] < 230:
             return False
+        # Mask out white/grays
         elif abs(pixel[0] - pixel[1]) < 50 and abs(pixel[0] - pixel[2]) < 50:
+            return False
+        # Mask out purple (collected pokestops)
+        elif pixel[0] > 150:
             return False
 
         return True
     
     def _apply_pokestop_mask_visualise(self, pixel):
+        # Mask out anything will lower blue levels
         if pixel[2] < 230:
             return [0, 0, 0, 0]
+        # Mask out white/grays
         elif abs(pixel[0] - pixel[1]) < 50 and abs(pixel[0] - pixel[2]) < 50:
+            return [0, 0, 0, 0]
+        # Mask out purple (collected pokestops)
+        elif pixel[0] > 150:
             return [0, 0, 0, 0]
 
         return [0, 0, pixel[2], 255]
