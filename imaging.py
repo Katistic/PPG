@@ -4,6 +4,7 @@ import numpy as np
 
 from PIL import Image
 
+
 class Imager:
     def __init__(self, device):
         self.im = None
@@ -27,12 +28,16 @@ class Imager:
         return self.im.crop([point1[0], point1[1], point2[0], point2[1]])
 
     def _coords_are_close(self, coord1, coord2):
+    @staticmethod
+    def _coordinates_are_close(coord1, coord2):
         if abs(coord1[0] - coord2[0]) < 80 and abs(coord1[1] - coord2[1]) < 80:
             return True
 
         return False
 
     def _apply_pokestop_mask(self, pixel):
+    @staticmethod
+    def _apply_pokestop_mask(pixel):
         # Mask out anything will lower blue levels
         if pixel[2] < 230:
             return False
@@ -46,6 +51,9 @@ class Imager:
         return True
     
     def _apply_pokestop_mask_visualise(self, pixel):
+
+    @staticmethod
+    def _apply_pokestop_mask_visualise(pixel):
         # Mask out anything will lower blue levels
         if pixel[2] < 230:
             return [0, 0, 0, 0]
@@ -86,6 +94,11 @@ class Imager:
                             self.pokestops[coords][1] += 1
                             self.pokestops[coords][2].append(pixel_i)
                             self.pokestops[coords][3].append(pixel_row)
+                    for coordinates in range(0, len(self.pokestops)):
+                        if self._coordinates_are_close([pixel_i, pixel_row], self.pokestops[coordinates][0]):
+                            self.pokestops[coordinates][1] += 1
+                            self.pokestops[coordinates][2].append(pixel_i)
+                            self.pokestops[coordinates][3].append(pixel_row)
 
                             close = True
                             break
@@ -97,23 +110,33 @@ class Imager:
                                 pixel_i, pixel_row))
 
         toremove = []
+        to_remove = []
         for pokestop in range(0, len(self.pokestops)):
             ps = self.pokestops[pokestop]
             if ps[1] < 500:
                 toremove.insert(0, pokestop)
+                to_remove.insert(0, pokestop)
             else:
                 # Add 16% resolution back to x coord from crop
                 x = (ps[2][round(len(ps[2])/2)]+(self.device.r_screen_size[0]/6.25))/self.device.r_screen_size[0]*100
+                x = (ps[2][round(len(ps[2]) / 2)] + (self.device.r_screen_size[0] / 6.25)
+                     ) / self.device.r_screen_size[0] * 100
                 # Add 50% resolution back to y coord from crop
                 y = (ps[3][round(len(ps[3])/2)]+(self.device.r_screen_size[1]/2))/self.device.r_screen_size[1]*100
+                y = (ps[3][round(len(ps[3]) / 2)] + (self.device.r_screen_size[1] / 2)
+                     ) / self.device.r_screen_size[1] * 100
 
                 self.pokestops[pokestop] = [(x, y), ps[1]]
 
         for ps in toremove:
+        for ps in to_remove:
             if visualise:
                 for pos in range(0, len(self.pokestops[ps][2])):
                     img_array[self.pokestops[ps][3][pos]][self.pokestops[ps][2][pos]] = np.array([0, 0, 0, 0], dtype=int)
                     
+                    img_array[self.pokestops[ps][3][pos]][
+                        self.pokestops[ps][2][pos]] = np.array([0, 0, 0, 0], dtype=int)
+
             self._logger.debug("Removed pokestop at x{} y{}, density too low".format(
                 self.pokestops[ps][0][0], self.pokestops[ps][0][1]))
             del self.pokestops[ps]

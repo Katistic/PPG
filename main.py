@@ -18,7 +18,8 @@ for pokestop in imager.pokestops:
     pokego.do_tap(pokestop[0])
     time.sleep(2)
 
-#pokego.set_size()
+pokego.set_size()
+
 '''
 SPEED TESTS
 

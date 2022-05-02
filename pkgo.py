@@ -1,6 +1,7 @@
 import adb
 import time
 
+
 class PokemonGoHandler(adb.ADBDevice):
     def __init__(self):
         super().__init__()

@@ -3,6 +3,7 @@ import re
 import time
 import logging
 
+
 class ADBDevice:
     def __init__(self):
         self._logger = logging.getLogger("ADBDevice")
@@ -36,7 +37,7 @@ class ADBDevice:
     def set_size(self, resolution=None):
         if resolution is None:
             resolution = self.d_screen_size
-        
+
         dpi = self._get_density(resolution)
 
         self.do_adb_command("wm size {}x{}".format(resolution[0], resolution[1]))
