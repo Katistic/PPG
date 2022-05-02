@@ -3,6 +3,9 @@ import pkgo
 import logging
 import time
 
+from enums import MaskType
+
+
 logging.basicConfig(level=logging.DEBUG)
 
 pokego = pkgo.PokemonGoHandler()
@@ -12,7 +15,7 @@ pokego.set_size([720, 1280])
 pokego.pull_screen()
 imager.load_new_image("screengrab.png")
 
-imager.pokestop_mask(True)
+imager.apply_mask(MaskType.POKESTOP, False)
 
 for pokestop in imager.pokestops:
     pokego.do_tap(pokestop[0])
@@ -22,6 +25,15 @@ pokego.set_size()
 
 '''
 SPEED TESTS
+
+1080x2400 vis 0.786
+1080x2400 novis 0.253
+1080x1920 vis 0.659
+1080x1920 novis 0.187
+720x1280 vis 0.319
+720x1280 novis 0.084
+
+OLD SPEED TESTS
 
 1080x2400 full 16.88
 1080x2400 full/novisualise 7.92
